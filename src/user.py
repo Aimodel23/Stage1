@@ -1,35 +1,30 @@
-from flask import Flask, request, jsonify
-from config.config import Config
+from flask import Blueprint, request, jsonify
+from src.storage import StorageManager
 
-app = Flask(__name__)
-app.config.from_object(Config)
+# Initialize Blueprint
+user_bp = Blueprint('user', __name__)
 
-@app.route('/user/reserve', methods=['POST'])
-def reserve_storage():
-    try:
-        data = request.json
-        amount = data.get('amount')
-        if not amount:
-            return jsonify({'error': 'No amount specified'}), 400
+# Initialize Storage Manager
+storage_manager = StorageManager()
 
-        # Simulating storage reservation process
-        # You need to implement actual storage reservation logic here
-        return jsonify({'message': f'Reserved {amount} GB of storage'}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+@user_bp.route('/storage', methods=['POST'])
+def save_data():
+    data = request.json
+    if 'data' in data:
+        file_id = storage_manager.save_data(data['data'])
+        return jsonify({'file_id': file_id}), 201
+    return jsonify({'error': 'Invalid data'}), 400
 
-@app.route('/user/search', methods=['GET'])
-def search_storage():
-    try:
-        query = request.args.get('query')
-        if not query:
-            return jsonify({'error': 'No query specified'}), 400
+@user_bp.route('/storage/<file_id>', methods=['GET'])
+def get_data(file_id):
+    data = storage_manager.retrieve_data(file_id)
+    if data:
+        return jsonify({'data': data}), 200
+    return jsonify({'error': 'File not found'}), 404
 
-        # Simulating storage search process
-        # You need to implement actual storage search logic here
-        return jsonify({'results': f'Found storage matching {query}'}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True)
+@user_bp.route('/storage/<file_id>', methods=['DELETE'])
+def delete_data(file_id):
+    success = storage_manager.delete_data(file_id)
+    if success:
+        return jsonify({'message': 'File deleted'}), 200
+    return jsonify({'error': 'File not found'}), 404
